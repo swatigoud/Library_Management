@@ -1,12 +1,198 @@
+-- CREATE DATABASE library;
 use library_project2;
--- SQL Project - Library Management System 
-select * from books;
-select * from branch;
-select * from employees;
-select * from issued_status;
-select * from members;
-select * from return_status;
+-- Create table "Branch"
+DROP TABLE IF EXISTS branch;
+CREATE TABLE branch
+(
+            branch_id VARCHAR(10) PRIMARY KEY,
+            manager_id VARCHAR(10),
+            branch_address VARCHAR(30),
+            contact_no VARCHAR(15)
+);
 
+
+-- Create table "Employee"
+DROP TABLE IF EXISTS employees;
+CREATE TABLE employees
+(
+            emp_id VARCHAR(10) PRIMARY KEY,
+            emp_name VARCHAR(30),
+            position VARCHAR(30),
+            salary DECIMAL(10,2),
+            branch_id VARCHAR(10),
+            FOREIGN KEY (branch_id) REFERENCES  branch(branch_id)
+);
+
+
+-- Create table "Members"
+DROP TABLE IF EXISTS members;
+CREATE TABLE members
+(
+            member_id VARCHAR(10) PRIMARY KEY,
+            member_name VARCHAR(30),
+            member_address VARCHAR(30),
+            reg_date DATE
+);
+
+
+
+-- Create table "Books"
+DROP TABLE IF EXISTS books;
+CREATE TABLE books
+(
+            isbn VARCHAR(50) PRIMARY KEY,
+            book_title VARCHAR(80),
+            category VARCHAR(30),
+            rental_price DECIMAL(10,2),
+            status VARCHAR(10),
+            author VARCHAR(30),
+            publisher VARCHAR(30)
+);
+
+
+
+-- Create table "IssueStatus"
+DROP TABLE IF EXISTS issued_status;
+CREATE TABLE issued_status
+(
+            issued_id VARCHAR(10) PRIMARY KEY,
+            issued_member_id VARCHAR(30),
+            issued_book_name VARCHAR(80),
+            issued_date DATE,
+            issued_book_isbn VARCHAR(50),
+            issued_emp_id VARCHAR(10),
+            FOREIGN KEY (issued_member_id) REFERENCES members(member_id),
+            FOREIGN KEY (issued_emp_id) REFERENCES employees(emp_id),
+            FOREIGN KEY (issued_book_isbn) REFERENCES books(isbn) 
+);
+
+
+
+-- Create table "ReturnStatus"
+DROP TABLE IF EXISTS return_status;
+CREATE TABLE return_status
+(
+            return_id VARCHAR(10) PRIMARY KEY,
+            issued_id VARCHAR(30),
+            return_book_name VARCHAR(80),
+            return_date DATE,
+            return_book_isbn VARCHAR(50),
+            FOREIGN KEY (return_book_isbn) REFERENCES books(isbn)
+);
+
+
+-- Project TASK
+
+
+-- ### 2. CRUD Operations
+
+
+
+-- Task 1. Create a New Book Record
+INSERT INTO books(isbn, book_title, category, rental_price, status, author, publisher)
+VALUES('978-1-60129-456-2', 'To Kill a Mockingbird', 'Classic', 6.00, 'yes', 'Harper Lee', 'J.B. Lippincott & Co.');
+SELECT * FROM books;
+
+-- Task 2: Update an Existing Member's Address
+update members
+set member_address = '125 Main st'
+where member_id =  'C101';
+
+
+-- Task 3: Delete a Record from the Issued Status Table
+-- Objective: Delete the record with issued_id = 'IS104' from the issued_status table.
+Delete from issued_status 
+where issued_id = 'IS121';
+
+-- Task 4: Retrieve All Books Issued by a Specific Employee
+-- Objective: Select all books issued by the employee with emp_id = 'E101'.
+select * from issued_status 
+where issued_emp_id = 'E101';
+
+-- Task 5: List Members Who Have Issued More Than One Book
+-- Objective: Use GROUP BY to find members who have issued more than one book.
+ select
+       issued_member_id,
+	   count(*)
+ from issued_staus 
+ group by issued_member_id
+ having count(*) >1;
+
+-- ### 3. CTAS (Create Table As Select)
+
+-- Task 6: Create Summary Tables**: Used CTAS to generate new tables based on query results - each book and total book_issued_cnt
+create table book_counts
+as 
+select   
+      b.isbn,
+      b.book_title,
+      count(ist.issued_id) as no_issued
+from books as b 
+join 
+issued_status as ist
+on b.isbn = issued_book_isbn
+group by  b.isbn, b.book_title;
+
+select * from book_counts ;
+
+-- ### 4. Data Analysis & Findings
+
+-- Task 7. **Retrieve All Books in a Specific Category:
+select * from books 
+where category = 'classic';
+
+-- Task 8: Find Total Rental Income by Category:
+select 
+	 b.category,
+     sum(b.rental_price),
+     Count(*)
+from books as b 
+join 
+issued_status as ist 
+on b.isbn = issued_book_isbn
+group by b.category;
+
+
+-- Task 9. **List Members Who Registered in the Last 180 Days**:
+select * 
+from members
+where reg_date >= current_date - Interval 180 day;
+
+
+insert into members(member_id, member_name, member_address, reg_date)
+values ('C120','Swati', '39 whiteway street','2026-02-24'),
+       ('C121', 'Shweta','29A Heron Mews ilford','2025-12-01'),
+       ('C122','Bhanu Prasad','26 Forest gate London','2026-01-18');
+
+-- Task 10: List Employees with Their Branch Manager's Name and their branch details**:
+select   
+       e1. * ,
+       e2.emp_name as manager,
+       b.manager_id
+from branch as b
+join 
+employees as e1
+on b.branch_id = e1.branch_id
+join 
+employees as e2
+on e2.emp_id = b.manager_id;
+
+-- Task 11. Create a Table of Books with Rental Price Above a Certain Threshold
+create table expensive_books as 
+select 
+      *
+from books
+where rental_price > 7;
+select * from expensive_books;
+
+-- Task 12: Retrieve the List of Books Not Yet Returned
+select 
+      distinct ist.issued_book_name
+from issued_status as ist
+left join
+return_status as rs
+on ist.issued_id = rs.issued_id
+where rs.return_id is null 
 
 /*
 Task 13: Identify Members with Overdue Books
